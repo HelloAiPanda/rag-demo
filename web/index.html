@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RAG Demo · 银行知识库问答</title>
+<style>
+:root{--navy:#14304a;--navy2:#1d4468;--accent:#c0642f;--ink:#1c1f23;--muted:#66707c;
+--line:#e4e0d6;--bg:#f6f4ef;--card:#fff;--ok:#2f7d5b;--warn:#b7791f;--bad:#b3453a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 "PingFang SC","Microsoft YaHei UI","Microsoft YaHei",system-ui,sans-serif}
+header{background:linear-gradient(180deg,#14304a,#102639);color:#fff;padding:16px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header h1{font-size:17px;margin:0;font-weight:600;letter-spacing:.5px}
+header .sub{font-size:12px;color:#9fb4c7}
+.chips{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.chip{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:4px 11px;font-size:12px;color:#dbe6ef}
+.chip b{color:#fff;font-weight:600}
+main{display:grid;grid-template-columns:320px 1fr;gap:18px;max-width:1180px;margin:20px auto;padding:0 20px 40px;align-items:start}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 2px rgba(20,48,74,.04)}
+.side{padding:16px}
+.side h2{font-size:13px;color:var(--muted);letter-spacing:1px;margin:0 0 10px;font-weight:600}
+#drop{border:2px dashed #cfc8b8;border-radius:12px;padding:22px 14px;text-align:center;color:var(--muted);cursor:pointer;transition:.18s;font-size:13px}
+#drop:hover,#drop.over{border-color:var(--accent);background:#fdf7ef;color:var(--accent)}
+#drop b{display:block;color:var(--navy);font-size:14px;margin-bottom:4px}
+.docs{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.doc{display:flex;align-items:center;gap:8px;background:#fbfaf6;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:13px}
+.doc .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc .c{color:var(--muted);font-size:11px}
+.doc button{border:none;background:none;color:#b0453a;cursor:pointer;font-size:12px;padding:2px 4px}
+.samples{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.samples button{text-align:left;background:#f2f6fa;border:1px solid #dbe6ef;color:var(--navy2);border-radius:8px;padding:7px 10px;font-size:12.5px;cursor:pointer;font-family:inherit}
+.samples button:hover{background:#e7eff6}
+.chat{padding:0;display:flex;flex-direction:column;min-height:560px}
+.log{padding:18px;flex:1;display:flex;flex-direction:column;gap:14px;max-height:70vh;overflow:auto}
+.empty{color:var(--muted);text-align:center;margin:auto;font-size:13.5px;line-height:2}
+.q{align-self:flex-end;background:var(--navy);color:#fff;border-radius:12px 12px 2px 12px;padding:9px 14px;max-width:78%;font-size:14px}
+.a{align-self:flex-start;max-width:92%}
+.a .meta{display:flex;gap:8px;align-items:center;margin-bottom:6px;font-size:11.5px;color:var(--muted)}
+.badge{border-radius:999px;padding:2px 9px;font-size:11px;border:1px solid}
+.b-llm{color:var(--ok);border-color:#bfe0d0;background:#eef8f2}
+.b-ext{color:var(--warn);border-color:#ecd9b0;background:#fdf6e7}
+.b-ref{color:var(--bad);border-color:#e8c6c1;background:#fbeeec}
+.a .body{background:#fbfaf6;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:11px 14px;white-space:pre-wrap;font-size:14px}
+.srcs{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.src{background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:12.5px;color:#3c4450}
+.src .top{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:11px;margin-bottom:4px}
+.bar{height:3px;background:#eee9dd;border-radius:2px;flex:1;max-width:90px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.src p{margin:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.composer{display:flex;gap:8px;padding:14px;border-top:1px solid var(--line);background:#fcfbf7;border-radius:0 0 14px 14px}
+#q{flex:1;border:1px solid var(--line);border-radius:10px;padding:11px 13px;font:inherit;font-size:14px;outline:none;background:#fff}
+#q:focus{border-color:var(--navy2);box-shadow:0 0 0 3px #e7eff6}
+#send{background:var(--navy);color:#fff;border:none;border-radius:10px;padding:0 20px;font:inherit;font-size:14px;cursor:pointer}
+#send:disabled{opacity:.5;cursor:default}
+.evalbox{padding:18px}
+.evalbox h3{margin:0 0 10px;font-size:15px;color:var(--navy)}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{background:#f2efe8;text-align:left;padding:6px 8px;color:var(--navy);font-weight:600}
+.tbl td{padding:6px 8px;border-top:1px solid #eeeae0;vertical-align:top}
+.ok{color:var(--ok);font-weight:600}.no{color:var(--bad);font-weight:600}
+.hint{color:var(--muted);font-size:12px;margin:8px 0 0;line-height:1.6}
+a{color:var(--navy2)}
+</style>
+</head>
+<body>
+<header>
+  <h1>银行知识库问答 · RAG Demo</h1>
+  <span class="sub">FastAPI + 向量检索 + 出处引用</span>
+  <div class="chips">
+    <span class="chip">向量 <b id="s-embed">-</b></span>
+    <span class="chip">模型 <b id="s-llm">-</b></span>
+    <span class="chip">切片 <b id="s-chunk">-</b></span>
+    <span class="chip">文档 <b id="s-docs">0</b> / 块 <b id="s-chunks">0</b></span>
+  </div>
+</header>
+
+<main>
+  <section class="card side">
+    <h2>知识库</h2>
+    <div id="drop">
+      <b>拖文件到这里，或点击选择</b>
+      支持 .txt / .md / .pdf，单文件 ≤ 20MB
+    </div>
+    <input id="file" type="file" accept=".txt,.md,.pdf" hidden>
+    <div class="docs" id="docs"></div>
+
+    <h2 style="margin-top:18px">示例问题</h2>
+    <div class="samples" id="samples"></div>
+  </section>
+
+  <section class="card chat">
+    <div class="log" id="log">
+      <div class="empty" id="empty">
+        先在左边上传文档，再提问。<br>
+        答案会带出处编号，点开可以看到命中的原文片段。
+      </div>
+    </div>
+    <div class="composer">
+      <input id="q" placeholder="问点什么，比如：流式对话为什么不能边生成边写库？" autocomplete="off">
+      <button id="send">提问</button>
+    </div>
+  </section>
+</main>
+
+<section class="card evalbox" style="max-width:1180px;margin:0 auto 30px;padding:18px 20px">
+  <h3>效果评测 <button id="eval" style="margin-left:10px;font-size:12px;padding:4px 10px;border-radius:8px;border:1px solid #dbe6ef;background:#f2f6fa;cursor:pointer;font-family:inherit">跑一遍评测集</button></h3>
+  <div id="evalout"><p class="hint">评测集在 <code>eval/questions.jsonl</code>，每题带关键词，命中率 = 答案里出现关键词的比例。</p></div>
+</section>
+
+<script>
+const $ = s => document.querySelector(s);
+const state = { docs: [] };
+
+const SAMPLES = [
+  "流式对话为什么不能边生成边写数据库？",
+  "知识库为什么要做成三层？",
+  "问数为什么不直接执行模型生成的 SQL？",
+  "AI 生成的代码，评审要重点看哪几类问题？",
+  "大文件上传为什么要分块？",
+  "异步任务怎么防止重复执行？",
+  "检索不到的时候应该怎么回答？",
+];
+
+function el(tag, cls, text){ const n=document.createElement(tag); if(cls) n.className=cls; if(text!=null) n.textContent=text; return n; }
+
+async function refresh(){
+  const s = await fetch('/api/stats').then(r=>r.json());
+  $('#s-embed').textContent = s.embedder + ' / ' + s.dim + 'd';
+  $('#s-llm').textContent = s.llm === 'on' ? '大模型已接入' : '摘录模式（未配置）';
+  $('#s-chunk').textContent = s.chunk_size + '/' + s.chunk_overlap;
+  $('#s-chunks').textContent = s.chunks;
+  const d = await fetch('/api/docs').then(r=>r.json());
+  state.docs = d.docs;
+  $('#s-docs').textContent = d.docs.length;
+  const box = $('#docs'); box.innerHTML='';
+  d.docs.forEach(doc=>{
+    const row = el('div','doc');
+    row.append(el('span','n',doc.name), el('span','c',doc.chunks+' 块'));
+    const del = el('button',null,'删除');
+    del.onclick = async ()=>{ await fetch('/api/docs/'+doc.id,{method:'DELETE'}); refresh(); };
+    row.append(del); box.append(row);
+  });
+  if(!d.docs.length){ box.append(el('p','hint','还没有文档，先上传一个试试。')); }
+}
+
+async function upload(file){
+  const fd = new FormData(); fd.append('file', file);
+  $('#drop').textContent = '正在解析并入库…';
+  try{
+    const res = await fetch('/api/upload',{method:'POST',body:fd});
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.detail || '上传失败');
+    $('#drop').innerHTML = '<b>已入库</b>' + (data.deduped ? '内容重复，已跳过（按指纹去重）' : `${data.chunks} 个片段`);
+  }catch(e){
+    $('#drop').innerHTML = '<b>失败</b>' + e.message;
+  }
+  refresh();
+}
+
+$('#drop').onclick = ()=> $('#file').click();
+$('#file').onchange = e => { if(e.target.files[0]) upload(e.target.files[0]); };
+['dragenter','dragover'].forEach(t=>$('#drop').addEventListener(t,e=>{e.preventDefault();$('#drop').classList.add('over')}));
+['dragleave','drop'].forEach(t=>$('#drop').addEventListener(t,e=>{e.preventDefault();$('#drop').classList.remove('over')}));
+$('#drop').addEventListener('drop', e=>{ if(e.dataTransfer.files[0]) upload(e.dataTransfer.files[0]); });
+
+function addQuestion(text){ $('#empty')?.remove(); $('#log').append(el('div','q',text)); }
+function addAnswer(data){
+  const wrap = el('div','a');
+  const modeMap = {llm:['b-llm','大模型回答'],extractive:['b-ext','原文摘录'],refuse:['b-ref','拒答']};
+  const [cls,label] = modeMap[data.mode] || ['b-ext',data.mode];
+  const meta = el('div','meta'); meta.append(el('span','badge '+cls,label), el('span',null,data.latency_ms+' ms'));
+  wrap.append(meta);
+  wrap.append(el('div','body',data.answer));
+  if(data.sources?.length){
+    const box = el('div','srcs');
+    data.sources.forEach((s,i)=>{
+      const c = el('div','src');
+      const top = el('div','top');
+      top.append(el('span',null,`[${i+1}] ${s.doc_name}`), el('span',null,s.score.toFixed(3)));
+      const bar = el('div','bar'); const fill = el('i'); fill.style.width = Math.min(100, s.score*160)+'%'; bar.append(fill);
+      top.append(bar);
+      const p = el('p',null, s.text.replace(/^#{1,6}\s*/gm,''));
+      c.append(top,p); box.append(c);
+    });
+    wrap.append(box);
+  }
+  $('#log').append(wrap);
+  $('#log').scrollTop = $('#log').scrollHeight;
+}
+
+async function ask(){
+  const q = $('#q').value.trim(); if(!q) return;
+  $('#send').disabled = true; $('#q').value='';
+  addQuestion(q);
+  try{
+    const res = await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.detail || '请求失败');
+    addAnswer(data);
+  }catch(e){
+    addAnswer({answer:'出错了：'+e.message, mode:'refuse', sources:[], latency_ms:0});
+  }
+  $('#send').disabled = false; $('#q').focus();
+}
+
+$('#send').onclick = ask;
+$('#q').addEventListener('keydown', e=>{ if(e.key==='Enter') ask(); });
+
+SAMPLES.forEach(s=>{
+  const b = el('button',null,s);
+  b.onclick = ()=>{ $('#q').value = s; ask(); };
+  $('#samples').append(b);
+});
+
+$('#eval').onclick = async ()=>{
+  $('#evalout').innerHTML = '<p class="hint">跑评测中…</p>';
+  const d = await fetch('/api/eval',{method:'POST'}).then(r=>r.json());
+  if(d.detail){ $('#evalout').innerHTML = '<p class="hint">'+d.detail+'</p>'; return; }
+  let html = `<p class="hint">共 ${d.total} 题，命中 <b>${d.hit}</b>，命中率 <b>${(d.hit_rate*100).toFixed(0)}%</b>，平均耗时 ${d.avg_latency_ms} ms</p>`;
+  html += '<table class="tbl"><thead><tr><th>问题</th><th>结果</th><th>模式</th><th>最高分</th><th>耗时</th></tr></thead><tbody>';
+  d.results.forEach(r=>{
+    html += `<tr><td>${r.question}</td><td class="${r.ok?'ok':'no'}">${r.ok?'命中':'未命中'}</td><td>${r.mode}</td><td>${r.top_score}</td><td>${r.latency_ms}ms</td></tr>`;
+  });
+  html += '</tbody></table>';
+  $('#evalout').innerHTML = html;
+};
+
+refresh().then(()=>{
+  const q0 = new URLSearchParams(location.search).get('q');
+  if(q0){ $('#q').value = q0; ask(); }
+});
+</script>
+</body>
+</html>

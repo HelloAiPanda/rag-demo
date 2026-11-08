@@ -1,0 +1,10 @@
+{"question": "流式对话为什么不能边生成边写数据库？", "keywords": ["事务", "连接池"]}
+{"question": "知识库为什么做成三层？", "keywords": ["分类", "标签"]}
+{"question": "问数为什么不直接执行模型生成的 SQL？", "keywords": ["网关", "审计"]}
+{"question": "AI 生成的代码评审重点看哪几类问题？", "keywords": ["事务", "幂等"]}
+{"question": "大文件上传为什么要分块？", "keywords": ["分块", "超时"]}
+{"question": "异步任务怎么防止重复执行？", "keywords": ["幂等", "租约"]}
+{"question": "检索不到相关内容时应该怎么回答？", "keywords": ["没有找到"]}
+{"question": "监管对 AI 生成内容有什么要求？", "keywords": ["标识", "日志"]}
+{"question": "声纹聚类的阈值是多少？", "keywords": ["0.42"]}
+{"question": "为什么转写要按说话人合并？", "keywords": ["说话人", "合并"]}
